@@ -25,13 +25,16 @@
 #define MIN_PAYLOAD 46 // 64 for the frame
 #define FCS 0x00000000 // 4 byte, big-endian
 
+int assic = 0;
+
 void copyright() {
-  printf("epbuilder version 1.00.0\n");
+  printf("ethersend version 1.00.0\n");
   printf("Copyright 2012 - 2012 Derek Qian - http://web.cecs.pdx.edu/~dejun\n");
 }
 
 void usage() {
-  printf("Usage: epbuilder src dest\n");
+  printf("Usage: ethersend src dest\n");
+  printf("    or ethersend src dest -assic\n");
   printf("  src and dest should be in the format of xx:xx:xx:xx:xx:xx\n");
 }
 
@@ -101,22 +104,24 @@ int address_string_to_array(char* address_string, unsigned char* address_array, 
 }
 
 void dump_packet(unsigned char* packet, int packetsize) {
+  static int pos = 0;
+  static int line = 0;
   int i;
-  int line = 0;
   //printf("dump packet:\n");
   for(i=0; i<packetsize; i++) {
-    if(i%16 == 0) {
+    if(pos%16 == 0) {
       printf("%04d ", line);
       line++;
     }
     printf("%02x ", packet[i]);
-    if((i+1)%16 == 0) {
+    if((pos+1)%16 == 0) {
       printf("\n");
     }
+    pos++;
   }
-  if(packetsize%16 != 0) {
+  /*if(packetsize%16 != 0) {
     printf("\n");
-  }
+    }*/
 }
 
 /*
@@ -172,14 +177,23 @@ void packet_gen(unsigned char src[6], unsigned char dest[6], unsigned short type
     packet[14+datasize+3] = crc32;
     packetsize = 14+datasize+4;
   }
-  //dump_packet(packet, packetsize);
-  fwrite(packet, sizeof(unsigned char), packetsize, stdout);
+  if(assic) {
+    dump_packet(packet, packetsize);
+  } else {
+    fwrite(packet, sizeof(unsigned char), packetsize, stdout);
+  }
 }
 
 int main(int argc, char** argv) {
   int i;
 
-  if(argc != 3) {
+  switch(argc) {
+  case 3:
+    break;
+  case 4:
+    assic = 1;
+    break;
+  default:
     copyright();
     usage();
   }
@@ -229,6 +243,10 @@ int main(int argc, char** argv) {
   }
   //printf("Packet of checksum:\n");
   packet_gen(src, dest, PACKET_TYPE, (unsigned char*)&filechecksum, sizeof(filechecksum));
+
+  if(assic) {
+    printf("\n");
+  }
 
 quit_point:
   if(buf != NULL) {
