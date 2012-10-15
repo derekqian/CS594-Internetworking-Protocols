@@ -172,7 +172,8 @@ void packet_gen(unsigned char src[6], unsigned char dest[6], unsigned short type
     packet[14+datasize+3] = crc32;
     packetsize = 14+datasize+4;
   }
-  dump_packet(packet, packetsize);
+  //dump_packet(packet, packetsize);
+  fwrite(packet, sizeof(unsigned char), packetsize, stdout);
 }
 
 int main(int argc, char** argv) {
@@ -215,7 +216,7 @@ int main(int argc, char** argv) {
   unsigned char* curptr = buf;
   while(sizeleft > 0) {
     int packetsize = sizeleft > MAX_PAYLOAD ? MAX_PAYLOAD : sizeleft;
-    printf("Packet %d:\n", (int)(curptr-buf)/MAX_PAYLOAD);
+    //printf("Packet %d:\n", (int)(curptr-buf)/MAX_PAYLOAD);
     packet_gen(src, dest, PACKET_TYPE, curptr, packetsize);
     sizeleft = sizeleft - packetsize;
     curptr = curptr + packetsize;
@@ -226,7 +227,7 @@ int main(int argc, char** argv) {
   for(i=0; i<filesize; i++) {
     filechecksum += buf[i];
   }
-  printf("Packet of checksum:\n");
+  //printf("Packet of checksum:\n");
   packet_gen(src, dest, PACKET_TYPE, (unsigned char*)&filechecksum, sizeof(filechecksum));
 
 quit_point:
