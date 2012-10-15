@@ -1,1 +1,8 @@
-This program aims to builder Ethernet packets from a input file.
+
+This program aims to send an input file through Ethernet packets. A source address and a destination address is provided as the parameters to the program. The packet results is output through stdout in binary format or text format.
+
+CRC32 checksum is added into each ethernet packet. The algorithm is modified from: http://bochs.sourceforge.net/cgi-bin/lxr/source/crc.cc. The main idea here is to build a table instead of operate in binary mode too often. The CRC32 checksum could be big-endian or little-endian, could be most significant bit first or least significant bit first. Here we use big-endian, least significant bit first.
+
+To build the program, go to the source directory, run "gcc -o ethersend ethersend.c".
+
+To run the program, execute like this "./ethersend xx:xx:xx:xx:xx:xx xx:xx:xx:xx:xx:xx <filetosend | hd" or "./ethersend xx:xx:xx:xx:xx:xx xx:xx:xx:xx:xx:xx -assic <filetosend". The former one take the input file and output the packets in binary mode to stdout, we use hd here to view binary data. The later one takes the input file and output the packets in text mode to stdout. This way, we don't need the tool to view the result.
