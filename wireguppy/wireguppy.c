@@ -5,6 +5,20 @@
  * distribution of this software for license terms.
  */
 
+/*
+ * One really useful tool for measuring networks is a packet trace analyzer. A packet trace analyzer is a tool that takes packets read from the network and decodes them to reveal what is inside in a human-readable format. The most popular trace analyzer in general use these days is probably Wireshark, a GUI tool, and its command-line cousin tshark.
+ *
+ * I have written C code for a tiny, incomplete, broken cousin of tshark I call wireguppy. Wireguppy reads a packet trace file in PCAP format (taken from the network using a packet capture program such as tcpdump), and displays some very basic information about each packet in the trace---or maybe just crashes.
+ *
+ * Your assignment is to improve Wireguppy. At least, you must make wireguppy decode interesting information from the headers of TCP or UDP payloads of ethernet packets in a trace provided with the wireguppy distribution. At best, you will make Wireguppy handle weird packet types and try it on traces you capture yourself.
+ *
+ * You can get a copy of the Wireguppy source as a ZIP archive from http://svcs.cs.pdx.edu/tarballs/wireguppy.zip (or get a tarball from wireguppy.tar.gz. You can also clone git://svcs.cs.pdx.edu/git/wireguppy.git if you are familiar with Git.
+ *
+ * You must submit the following:
+ *   . Your modified wireguppy C source code, together with any other files needed to try it out.
+ *   . A README.homework file containing a writeup in plain text of not more than 1000 words describing what you did, how it worked, and anything else you think we should know.
+*/
+
 /* Decode captured packet stream */
 
 #include <assert.h>
