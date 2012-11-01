@@ -46,13 +46,18 @@ struct Packet {
   unsigned int microsec; // microsecond part
   unsigned int packetsize; // size of the packet in the file
   unsigned int payloadsize; // size of the actual payload captured from the wire
-  unsigned char data[0];
+  unsigned char data[0]; // maximum size is defined in GlobalHeader, usually 0xffff
 };
 
 struct Ethernet {
   unsigned char dest[6];
   unsigned char src[6];
-  unsigned short type;
+  unsigned short type; // 0x0800 for IPv4, 0x86DD for IPv6, 0x0806 for ARP, 0x8100 for VLAN
+  unsigned char data[1500]; // maximum size if 1500 for normal packet
+  unsigned int FCS;
+};
+
+struct IPv4 {
 };
 
 void print_ether() {
