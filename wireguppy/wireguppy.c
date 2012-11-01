@@ -19,11 +19,41 @@
  *   . A README.homework file containing a writeup in plain text of not more than 1000 words describing what you did, how it worked, and anything else you think we should know.
 */
 
+/*
+ * http://kroosec.blogspot.com/2012/10/a-look-at-pcap-file-format.html
+*/
+
 /* Decode captured packet stream */
 
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+
+#define MAGIC_NUMBER 0xA1B2C3D4
+
+struct GlobalHeader {
+  unsigned int magic; // 0xA1B2C3D4
+  unsigned short majorver;
+  unsigned short minorver;
+  unsigned int timezoneoffset;
+  unsigned int timestamp;
+  unsigned int snapshotlenght; // the maximum lenght for captured packets, usually 0xffff for tcpdump and wireshark.
+  unsigned int linklayertype; // 0x01 means the link layer protocol is Ethernet
+};
+
+struct Packet {
+  unsigned int timestamp; // Unix epoch, second part
+  unsigned int microsec; // microsecond part
+  unsigned int packetsize; // size of the packet in the file
+  unsigned int payloadsize; // size of the actual payload captured from the wire
+  unsigned char data[0];
+};
+
+struct Ethernet {
+  unsigned char dest[6];
+  unsigned char src[6];
+  unsigned short type;
+};
 
 void print_ether() {
     int i;
