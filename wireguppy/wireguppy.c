@@ -20,6 +20,7 @@
 */
 
 /*
+ * pcap file format
  * http://kroosec.blogspot.com/2012/10/a-look-at-pcap-file-format.html
 */
 
@@ -49,16 +50,6 @@ struct Packet {
   unsigned char data[0]; // maximum size is defined in GlobalHeader, usually 0xffff
 };
 
-struct Ethernet {
-  unsigned char dest[6];
-  unsigned char src[6];
-  unsigned short type; // 0x0800 for IPv4, 0x86DD for IPv6, 0x0806 for ARP, 0x8100 for VLAN
-  unsigned char data[1500]; // maximum size if 1500 for normal packet
-  unsigned int FCS;
-};
-
-struct IPv4 {
-};
 
 void print_ether() {
     int i;
@@ -121,16 +112,29 @@ void show_payload(int lt) {
         getchar();
 }
 
-int raw_mode = 0;
+void usage() {
+  printf("Usage: ./wireguppy < input.pcap\r");
+  printf("    or ./wireguppy -r < input.pcap for raw file\r");
+}
 
 int main(int argc, char **argv) {
     int i;
-    if (argc == 2) {
-        assert(!strcmp(argv[1], "-r"));
+    int raw_mode = 0;
+
+    // parameter check
+    if(argc == 1) {
+      raw_mode = 0;
+    } else if(argc == 2) {
+      if(0 != strcmp(argv[1], "-r")) {
+	usage();
+	return 0;
+      }
         raw_mode = 1;
     } else {
-        assert(argc == 1);
+      usage();
+      return 0;
     }
+
     if (!raw_mode) {
         /* XXX Should check link type and
            record snapshot length. */
