@@ -42,12 +42,11 @@ struct GlobalHeader {
   unsigned int linklayertype; // 0x01 means the link layer protocol is Ethernet
 };
 
-struct Packet {
+struct PacketHeader {
   unsigned int timestamp; // Unix epoch, second part
   unsigned int microsec; // microsecond part
   unsigned int packetsize; // size of the packet in the file
   unsigned int payloadsize; // size of the actual payload captured from the wire
-  unsigned char data[0]; // maximum size is defined in GlobalHeader, usually 0xffff
 };
 
 
@@ -76,107 +75,108 @@ int get32(void) {
         (b4 & 0xff);
 }
 
-int flip32(int x) {
-    return
-        ((x >> 24) & 0xff) |
-        ((x >> 8) & 0xff00) |
-        ((x << 8) & 0xff0000) |
-        ((x << 24) & 0xff000000);
-}
-
-int decode_length_type() {
-    int length_type = get16();
-    if (length_type == 0x8100) {
-        printf("VLAN: %04x\n", get16());
-        length_type = get16();
-    }
-    printf("length/type: %04x\n", length_type);
-    return length_type;
-}
-
-/* ASSIGNMENT: MODIFY THIS TO PRINT INFORMATION ABOUT
-   ENCAPSULATED PAYLOAD. */
-int show_ip() {
-    int i, length;
-    (void) get16();
-    length = get16();
-    printf("IP: length %d\n", length);
-    for (i = 0; i < length - 4; i++)
-        (void) getchar();
-    return length;
-}
-
-void show_payload(int lt) {
-    int i;
-    for (i = 0; i < lt; i++)
-        getchar();
-}
-
 void usage() {
-  printf("Usage: ./wireguppy < input.pcap\r");
-  printf("    or ./wireguppy -r < input.pcap for raw file\r");
+  printf("Usage: ./wireguppy < input.pcap\n");
+  printf("    or ./wireguppy -r < input.pcap for raw file\n");
 }
 
 int main(int argc, char **argv) {
-    int i;
-    int raw_mode = 0;
+  int raw_mode = 0;
+  struct GlobalHeader ghead;
+  struct PacketHeader phead;
 
-    // parameter check
-    if(argc == 1) {
-      raw_mode = 0;
-    } else if(argc == 2) {
-      if(0 != strcmp(argv[1], "-r")) {
-	usage();
-	return 0;
-      }
-        raw_mode = 1;
-    } else {
+  // parameter check
+  if(argc == 1) {
+    raw_mode = 0;
+  } else if(argc == 2) {
+    if(0 != strcmp(argv[1], "-r")) {
       usage();
       return 0;
     }
-
-    if (!raw_mode) {
-        /* XXX Should check link type and
-           record snapshot length. */
-        for (i = 0; i < 6; i++)
-            printf("h%d: %08x\n", i, get32());
-        printf("\n");
-    }
-    while (1) {
-        int lt, ch, paylen;
-        if (!raw_mode) {
-            /* XXX Should use length information
-               in decoding below. */
-            (void) get32();
-            (void) get32();
-            paylen = flip32(get32());
-            printf("paylen: %d (%d)\n", paylen, flip32(get32()));
-        }
-        printf("src: ");
-        print_ether();
-        printf("\n");
-        printf("dst: ");
-        print_ether();
-        printf("\n");
-        lt = decode_length_type();
-        if (lt == 0x0800)
-            lt = show_ip();
-        else if (lt <= 1500)
-            show_payload(lt);
-        else
-            assert(0);
-        assert(paylen >= lt - 14);
-        if (!raw_mode) {
-            paylen -= 14; /* ethernet header */
-            paylen -= lt; /* IP packet */
-            for (i = 0; i < paylen; i++)
-                printf("pad%d: %02x\n", i, getchar() & 0xff);
-        }
-        ch = getchar();
-        if (ch == EOF)
-            break;
-        (void) ungetc(ch, stdin);
-        printf("\n");
-    }
+    raw_mode = 1;
+  } else {
+    usage();
     return 0;
+  }
+
+  // read global header
+  if (!raw_mode) {
+    // XXX Should check link type and record snapshot length.
+    fread(&ghead, sizeof(unsigned char), sizeof(struct GlobalHeader), stdin);
+    if(ghead.magic != MAGIC_NUMBER) {
+      printf("invalid file format\n");
+      return 0;
+    }
+    printf("PCAP format v%d.%d, ", ghead.majorver, ghead.minorver);
+    if(ghead.linklayertype != 1) {
+      printf("unsupported link layer type\n");
+      return 0;
+    }
+    printf("link layer type: Ethernet.\n");
+  }
+
+  // read each packet
+  while (1) {
+    int i;
+    int length_type;
+    int ch, paylen;
+
+    printf("\n");
+
+    // packet header
+    if (!raw_mode) {
+      // XXX Should use length information in decoding below.
+      fread(&phead, sizeof(unsigned char), sizeof(struct PacketHeader), stdin);
+      paylen = phead.packetsize;
+      printf("paylen: %d (%d)\n", phead.packetsize, phead.payloadsize);
+    }
+
+    // data captured from wire
+    printf("src: ");
+    print_ether();
+    printf("\n");
+    printf("dst: ");
+    print_ether();
+    printf("\n");
+    length_type = get16();
+    if (length_type <= 1500) {
+      // old style packet
+      printf("Old style packet, length = %d\n", length_type);
+      assert(0);
+      for (i = 0; i < length_type; i++) {
+        getchar();
+      }
+    } else if (length_type == 0x0800) {
+      // ASSIGNMENT: MODIFY THIS TO PRINT INFORMATION ABOUT ENCAPSULATED PAYLOAD.
+      (void) get16();
+      length_type = get16();
+      printf("IP: length %d\n", length_type);
+      for (i = 0; i < length_type - 4; i++)
+        (void) getchar();
+    } else if(length_type == 0x0806) {
+      printf("ARP packet\n");
+      assert(0);
+    } else if(length_type == 0x86DD) {
+      printf("IPv6 packet\n");
+      assert(0);
+    } else {
+      printf("Unexpected Ethernet packet\n");
+      assert(0);
+    }
+    assert(phead.packetsize >= length_type - 14);
+    if (!raw_mode) {
+      paylen -= 14; // ethernet header
+      paylen -= length_type; // IP packet
+      for (i = 0; i < paylen; i++)
+	printf("pad%d: %02x\n", i, getchar() & 0xff);
+    }
+
+    // test end of file
+    ch = getchar();
+    if (ch == EOF) {
+      break;
+    }
+    ungetc(ch, stdin);
+  }
+  return 0;
 }
