@@ -22,6 +22,8 @@
 /*
  * pcap file format
  * http://kroosec.blogspot.com/2012/10/a-look-at-pcap-file-format.html
+ *
+ * tcpdump -w test.pcap -i wlan0
 */
 
 /* Decode captured packet stream */
@@ -39,7 +41,7 @@ struct GlobalHeader {
   unsigned short minorver;
   unsigned int timezoneoffset;
   unsigned int timestamp;
-  unsigned int snapshotlenght; // the maximum lenght for captured packets, usually 0xffff for tcpdump and wireshark.
+  unsigned int snapshotlength; // the maximum lenght for captured packets, usually 0xffff for tcpdump and wireshark.
   unsigned int linklayertype; // 0x01 means the link layer protocol is Ethernet
 };
 
@@ -119,9 +121,18 @@ int get32(void) {
         (b4 & 0xff);
 }
 
+/*
+ * 0 - /dev/nul
+ * 1 - binary
+ * 2 - as assic 
+*/
 void dump(int size, int screen) {
   int i;
-  if(screen != 0) {
+  if(screen == 0) {
+    for(i=0; i<size; i++) {
+      get8();
+    }
+  } else if(screen == 1) {
     for(i=0; i<size; i++) {
       if(i%16 == 0) {
 	printf("%02x", get8());
@@ -134,9 +145,9 @@ void dump(int size, int screen) {
     if(i%16 != 0) {
       printf("\n");
     }
-  } else {
+  } else if(screen == 2) {
     for(i=0; i<size; i++) {
-      get8();
+      printf("%c", get8());
     }
   }
 }
@@ -284,6 +295,10 @@ int main(int argc, char **argv) {
     if (!raw_mode) {
       // XXX Should use length information in decoding below.
       if(sizeof(struct PacketHeader) != fread(&phead, sizeof(unsigned char), sizeof(struct PacketHeader), stdin)) break;
+      if(phead.packetsize > ghead.snapshotlength) {
+	printf("wrong packet at 0x%08x\n", ftell(stdin));
+	return 0;
+      }
       printf("<<<PCAP packet\n");
       printf("    packet size: %d\n", phead.packetsize);
       printf("    payload size: %d\n", phead.payloadsize);
@@ -316,6 +331,7 @@ int main(int argc, char **argv) {
 	print_tcp(&tcphead);
 
 	// get payload in TCP packet
+	//dump(ipv4head.datalen-sizeof(ipv4head)-sizeof(tcphead), 2);
 	dump(ipv4head.datalen-sizeof(ipv4head)-sizeof(tcphead), 0);
       } else if(ipv4head.protocol == 17) {
 	struct UDPHeader udphead;
