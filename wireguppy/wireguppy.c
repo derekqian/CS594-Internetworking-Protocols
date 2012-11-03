@@ -332,7 +332,11 @@ int main(int argc, char **argv) {
 
 	// get payload in TCP packet
 	//dump(ipv4head.datalen-sizeof(ipv4head)-sizeof(tcphead), 2);
-	dump(ipv4head.datalen-sizeof(ipv4head)-sizeof(tcphead), 0);
+	if(phead.packetsize >= sizeof(ehead)+ipv4head.datalen) {
+	  dump(ipv4head.datalen-sizeof(ipv4head)-sizeof(tcphead), 0);
+	} else {
+	  dump((ipv4head.datalen-sizeof(ipv4head)-sizeof(tcphead))-(sizeof(ehead)+ipv4head.datalen-phead.packetsize), 0);
+	}
       } else if(ipv4head.protocol == 17) {
 	struct UDPHeader udphead;
 	get_udp(&udphead);
@@ -340,7 +344,11 @@ int main(int argc, char **argv) {
 	print_udp(&udphead);
 
 	// get payload in UDP packet
-	dump(udphead.size-sizeof(udphead), 0);
+	if(phead.packetsize >= sizeof(ehead)+ipv4head.datalen) {
+	  dump(udphead.size-sizeof(udphead), 0);
+	} else {
+	  dump((udphead.size-sizeof(udphead))-(sizeof(ehead)+ipv4head.datalen-phead.packetsize), 0);
+	}
       } else {
 	printf("Unexpected IP packet\n");
 	dump(ipv4head.datalen-sizeof(ipv4head), 1);
