@@ -1,0 +1,4 @@
+bug:
+1. destination MAC address should be gotten first.
+2. "assert(paylen >= lt - 14);" should be "assert(paylen >= lt + 14);".
+3. the length is calculated incorrectly when getting a VLAN Ethernet packet.
