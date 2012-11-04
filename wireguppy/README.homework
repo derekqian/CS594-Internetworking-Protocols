@@ -1,26 +1,43 @@
 1. General description
 This program aims at interpreting and displaying useful information in the captured PCAP file in a human-readable format. A PCAP file stores the data from the internet, it contains link layer frames transmitted in the internet hard ware. We can use tcpdump, a handy tool for network debuging, to capture the data using a network interface. There are a lot of PCAP files online too. We can download these files to test our program.
 
-3. Files submitted
+In this homework, we improved wireguppy as following:
+i). we extracted ip packets from Ethernet frames and displayed the information inside ip packet headers.
+ii). we extracted tcp packets and udp packets inside ip packets, and displayed the information in corresponding headers.
+iii). the program is designed to be robust, and will not crash when encounter a weird packet which is not yet supported by the current version.
+
+In this homework, we fixed the following bugs:
+i). destination MAC address should be fetched before source MAC address.
+ii). "assert(paylen >= lt - 14);" should be "assert(paylen >= lt + 14);".
+iii). the length is calculated incorrectly when getting a VLAN Ethernet packet.
+
+Now our program can handle pcap file, Ethernet packet, ipv4 packet, TCP packet and UDP packet. However, if the file contains other packets, our program will give a message to tell that an unexpected packet encoutered.
+
+We tested our program with the file that comes with the homework. The result shows the program can decode interesting information from the headers of TCP or UDP payloads of ethernet packets.
+
+Besides the file provided, we also tested our program with the files downloaded from Internet. The results show that our program can handle weird packet types. The pcap file that is captured by ourselves is also tested, and the program works just fine.
+
+
+2. Files submitted
 wireguppy.c - the source file for this program
 README.homework - the readme file introducing how this program works
 packets.pcap - the pcap file provided along with the homework assignment
-arp.pcap - test file downloaded from 
-rarp.pcap - 
-http.pcap - 
-telnet.pcap - 
+selfcap.pcap - test file captured by ourselves
+arp.pcap - test file downloaded from http://kroosec.blogspot.com/2012/10/a-look-at-pcap-file-format.html
+rarp.pcap - test file downloaded from http://kroosec.blogspot.com/2012/10/a-look-at-pcap-file-format.html
+http.pcap - test file downloaded from http://kroosec.blogspot.com/2012/10/a-look-at-pcap-file-format.html
+telnet.pcap - test file downloaded from http://kroosec.blogspot.com/2012/10/a-look-at-pcap-file-format.html
 
-2. How to build
+
+3. How to build
 To build the program, go to the source directory, run "gcc -o wireguppy wireguppy.c", or just type "make".
 
-3. How to run
+
+4. How to run
 "./wireguppy < infile.pcap" for files with strutures.
 "./wireguppy -r < infile.pcap" for raw files.
 Usually, the information is stored with structures.
 
-4. 
 
-bug:
-1. destination MAC address should be gotten first.
-2. "assert(paylen >= lt - 14);" should be "assert(paylen >= lt + 14);".
-3. the length is calculated incorrectly when getting a VLAN Ethernet packet.
+5. Other stuff learned
+The pcap file packet size is not always consistent with the size indicated in the IP packet. Sometimes larger, sometimes smaller. We should handle this situation, or the program will lost when extracting the packets.
