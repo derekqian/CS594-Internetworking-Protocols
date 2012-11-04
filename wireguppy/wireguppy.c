@@ -296,7 +296,7 @@ int main(int argc, char **argv) {
       // XXX Should use length information in decoding below.
       if(sizeof(struct PacketHeader) != fread(&phead, sizeof(unsigned char), sizeof(struct PacketHeader), stdin)) break;
       if(phead.packetsize > ghead.snapshotlength) {
-	printf("wrong packet at 0x%08x\n", ftell(stdin));
+	printf("wrong packet at 0x%08x\n", (int)ftell(stdin));
 	return 0;
       }
       printf("<<<PCAP packet\n");

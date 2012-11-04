@@ -1,3 +1,25 @@
+1. General description
+This program aims at interpreting and displaying useful information in the captured PCAP file in a human-readable format. A PCAP file stores the data from the internet, it contains link layer frames transmitted in the internet hard ware. We can use tcpdump, a handy tool for network debuging, to capture the data using a network interface. There are a lot of PCAP files online too. We can download these files to test our program.
+
+3. Files submitted
+wireguppy.c - the source file for this program
+README.homework - the readme file introducing how this program works
+packets.pcap - the pcap file provided along with the homework assignment
+arp.pcap - test file downloaded from 
+rarp.pcap - 
+http.pcap - 
+telnet.pcap - 
+
+2. How to build
+To build the program, go to the source directory, run "gcc -o wireguppy wireguppy.c", or just type "make".
+
+3. How to run
+"./wireguppy < infile.pcap" for files with strutures.
+"./wireguppy -r < infile.pcap" for raw files.
+Usually, the information is stored with structures.
+
+4. 
+
 bug:
 1. destination MAC address should be gotten first.
 2. "assert(paylen >= lt - 14);" should be "assert(paylen >= lt + 14);".
