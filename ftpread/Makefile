@@ -7,10 +7,16 @@
 # Please see the file COPYING in the source
 # distribution of this software for license terms.
 
-CFLAGS = -g -Wall
+CFLAGS = -g -Wall -c
 
-ftpread: ftpread.c
-	$(CC) $(CFLAGS) -o ftpread ftpread.c
+all : ftpread.o expect.o
+	$(CC) -o ftpread ftpread.o expect.o
+
+ftpread.o : ftpread.c
+	$(CC) $(CFLAGS) ftpread.c
+
+expect.o : expect.c
+	$(CC) $(CFLAGS) expect.c
 
 clean:
-	-rm -f ftpread
+	-rm -f ftpread *.o
