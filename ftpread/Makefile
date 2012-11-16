@@ -26,5 +26,8 @@ ftpread.o : ftpread.c
 expect.o : expect.c
 	$(CC) $(CFLAGS) expect.c
 
+test :
+	./ftpread -active svcs.cs.pdx.edu hello.txt
+
 clean:
 	-rm -f ftpread *.o

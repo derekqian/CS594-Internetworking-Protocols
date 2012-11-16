@@ -200,15 +200,61 @@ int main(int argc, char **argv) {
     shutdown(t_s, SHUT_RDWR);
     close(t_s);
   } else {
-    struct sockaddr_in t_sin;
-    t_sin.sin_family = AF_INET;
-    t_sin.sin_port = htons(0);
-    t_sin.sin_addr.s_addr = htonl(INADDR_ANY);
+    uint32_t h1, h2, h3, h4, p1, p2;
 
+    int t_s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    assert(t_s != -1);
+
+    struct sockaddr_in t_sin;
+    memset(&t_sin, 0, sizeof(t_sin));
     socklen_t size = sizeof(t_sin);
     if(0 != getsockname(s, (struct sockaddr *)&t_sin, &size)) {
       herror("getsockname failed");
       exit(1);
+    }
+    dbgmsg(("%s:%d\n", inet_ntoa(t_sin.sin_addr), ntohs(t_sin.sin_port)));
+
+    t_sin.sin_family = AF_INET;
+    t_sin.sin_port = htons(0);
+    //t_sin.sin_addr.s_addr = htonl(INADDR_ANY);
+    if(-1 == bind(t_s, (struct sockaddr *)&t_sin, sizeof(t_sin))) {
+      herror("bind failed");
+      exit(1);
+    }
+
+    size = sizeof(t_sin);
+    if(0 != getsockname(t_s, (struct sockaddr *)&t_sin, &size)) {
+      herror("getsockname failed");
+      exit(1);
+    }
+    dbgmsg(("%s:%d\n", inet_ntoa(t_sin.sin_addr), ntohs(t_sin.sin_port)));
+
+    h1 = t_sin.sin_addr.s_addr & 0xff;
+    h2 = (t_sin.sin_addr.s_addr>>8) & 0xff;
+    h3 = (t_sin.sin_addr.s_addr>>16) & 0xff;
+    h4 = (t_sin.sin_addr.s_addr>>24) & 0xff;
+    p1 = t_sin.sin_port & 0xff;
+    p2 = (t_sin.sin_port>>8) & 0xff;
+    csend(s_out, "PORT %u,%u,%u,%u,%u,%u", h1, h2, h3, h4, p1, p2);
+    cexpect(s_in, 200, "Command okay.");
+
+    if(-1 == listen(t_s, 4)) {
+      herror("listen failed");
+      exit(1);
+    }
+
+    while(1) {
+      int c_s = accept(t_s, NULL, NULL);
+      if(c_s < 0) {
+	herror("accept failed");
+	exit(1);
+      }
+
+      printf("accepted\n");
+      // read(c_s, buf, size);
+
+      shutdown(c_s, SHUT_RDWR);
+      close(c_s);
     }
   }
 
