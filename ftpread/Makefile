@@ -9,8 +9,16 @@
 
 CFLAGS = -g -Wall -c
 
-all : ftpread.o expect.o
+all : ftpread
+
+wireguppy : wireguppy.o
+	$(CC) -o wireguppy wireguppy.o
+
+ftpread : ftpread.o expect.o
 	$(CC) -o ftpread ftpread.o expect.o
+
+wireguppy.o : wireguppy.c
+	$(CC) $(CFLAGS) wireguppy.c
 
 ftpread.o : ftpread.c
 	$(CC) $(CFLAGS) ftpread.c

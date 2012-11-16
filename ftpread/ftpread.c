@@ -82,6 +82,9 @@
 #include <string.h>
 #include <arpa/inet.h>
 
+#include "expect.h"
+
+
 #define VERBOSE 
 #ifdef VERBOSE
 #define dbgmsg(msg) printf msg
@@ -89,46 +92,10 @@
 #define dbgmsg(msg) 
 #endif
 
-static unsigned char msgbuf[516];
+static char* username = "anonymous";
+static char* password = "dejun@pdx.edu";
 
-static int format_rrq(char *filename) {
-    char *modestr = "octet";
-    msgbuf[0] = 0;
-    msgbuf[1] = 1;
-    strcpy((char *)msgbuf + 2, filename);
-    strcpy((char *)msgbuf + 2 + strlen(filename) + 1, modestr);
-    return 2 + strlen(filename) + 1 + strlen(modestr) + 1;
-}
-
-static int process_response(int msglen, int blocknum) {
-    /* XXX should check msglen in case of corrupt packet */
-    unsigned short opcode = (msgbuf[0] << 8) | msgbuf[1];
-    switch (opcode) {
-    case 5 /* error */:
-        fprintf(stderr, "error: %s\n", msgbuf + 4);
-        exit(1);
-    case 3 /* data */: {
-        int actualblock = (msgbuf[2] << 8) | msgbuf[3];
-        if (actualblock != blocknum) {
-            fprintf(stderr, "received unexpected block %d\n", actualblock);
-            return -1;
-        }
-        int r = fwrite(msgbuf + 4, 1, msglen - 4, stdout);
-        assert(r == msglen - 4);
-        return msglen - 4; }
-    }
-    fprintf(stderr, "unknown opcode 0x%04x received, giving up\n", opcode);
-    exit(1);
-}
-
-void format_ack(int blocknum) {
-    msgbuf[0] = 0;
-    msgbuf[1] = 4;
-    msgbuf[2] = (blocknum >> 8) & 0xff;
-    msgbuf[3] = blocknum & 0xff;
-}
-
-void usage() {
+static void usage() {
   printf("ftpread version 1.0\n");
   printf("Usage: ftpread [-passive/-active] hostname filename\n");
 }
@@ -181,44 +148,73 @@ int main(int argc, char **argv) {
 
   int s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   assert(s != -1);
+  FILE *s_in = fdopen(s, "r");
+  assert(s_in != NULL);
+  FILE *s_out = fdopen(s, "w");
+  assert(s_out != NULL);
 
   struct sockaddr_in sin;
   sin.sin_family = AF_INET;
-  sin.sin_port = htons(21); // FTP port number
+  sin.sin_port = htons(21); // FTP port number (rfc page 59)
   /* XXX Should try all the addresses in the list. */
   sin.sin_addr.s_addr = *(uint32_t *)h->h_addr;
 
-    int size = format_rrq(argv[2]);
-    int r = sendto(s, msgbuf, size, 0,
-                   (const struct sockaddr *)&sin, (socklen_t)sizeof(sin));
-    assert(r == size);
+  if(0 != connect(s, (struct sockaddr *)&sin, sizeof(sin))) {
+    herror("connect failed");
+    exit(1);
+  }
 
-    struct sockaddr_in ssin;
-    socklen_t ssaddrlen = sizeof(ssin);
-    r = recvfrom(s, (void *)msgbuf, sizeof(msgbuf), 0,
-                 (struct sockaddr *)&ssin, &ssaddrlen);
-    assert(r >= 0);
+  cexpect(s_in, 220, "Service ready for new user."); // page 39, section 4.2
+  csend(s_out, "USER %s", username); // page 25, section 4
+  cexpect(s_in, 331, "User name okay, need password.");
+  csend(s_out, "PASS %s", password);
+  cexpect(s_in, 230, "User logged in, proceed.");
+  csend(s_out, "TYPE I");
+  cexpect(s_in, 200, "Command okay.");
+  if(passive ==1) {
+    uint32_t h1, h2, h3, h4, p1, p2;
+    csend(s_out, "PASV");
+    cexpect(s_in, 227, "Entering Passive Mode (h1,h2,h3,h4,p1,p2).");
+    sscanf(cexpect_response, "Entering Passive Mode (%u,%u,%u,%u,%u,%u).", &h1, &h2, &h3, &h4, &p1, &p2);
+    csend(s_out, "RETR hello.txt");
 
-    int blocknum = 1;
-    while (1) {
-        int transferred = process_response(r, blocknum);
-        if (transferred == -1)
-            continue;
-        format_ack(blocknum);
-        r = sendto(s, msgbuf, size, 0,
-                   (const struct sockaddr *)&ssin, (socklen_t)sizeof(ssin));
-        if (transferred < 512) {
-#ifdef DEBUG
-            fprintf(stderr, "processing last %d bytes\n", transferred);
-#endif
-            break;
-        }
-        ssaddrlen = sizeof(ssin);
-        r = recvfrom(s, (void *)msgbuf, sizeof(msgbuf), 0,
-                     (struct sockaddr *)&ssin, &ssaddrlen);
-        assert(r >= 0);
-        blocknum++;
+    int t_s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    assert(t_s != -1);
+
+    struct sockaddr_in t_sin;
+    t_sin.sin_family = AF_INET;
+    t_sin.sin_port = p1 + (p2<<8);
+    t_sin.sin_addr.s_addr = h1 + (h2<<8) + (h3<<16) + (h4<<24);
+
+    if(0 != connect(t_s, (struct sockaddr *)&t_sin, sizeof(t_sin))) {
+      herror("connect to data port failed");
+      exit(1);
     }
 
-    return 0;
+    char buf[512];
+    int r;
+    while((r=read(t_s, buf, 512)) > 0) {
+      write(1, buf, r);
+    }
+
+    shutdown(t_s, SHUT_RDWR);
+    close(t_s);
+  } else {
+    struct sockaddr_in t_sin;
+    t_sin.sin_family = AF_INET;
+    t_sin.sin_port = htons(0);
+    t_sin.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    socklen_t size = sizeof(t_sin);
+    if(0 != getsockname(s, (struct sockaddr *)&t_sin, &size)) {
+      herror("getsockname failed");
+      exit(1);
+    }
+  }
+
+  fclose(s_out);
+  fclose(s_in);
+  shutdown(s, SHUT_RDWR);
+  close(s);
+  return 0;
 }

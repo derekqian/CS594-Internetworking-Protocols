@@ -15,7 +15,7 @@
 
 #include "expect.h"
 
-int cexpect_verbose = 0;
+int cexpect_verbose = 1;
 
 char cexpect_response[2048];
 
