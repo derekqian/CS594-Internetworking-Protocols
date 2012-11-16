@@ -85,7 +85,7 @@
 #include "expect.h"
 
 
-#define VERBOSE 
+//#define VERBOSE 
 #ifdef VERBOSE
 #define dbgmsg(msg) printf msg
 #else
@@ -123,6 +123,7 @@ int main(int argc, char **argv) {
     strcpy(hostname, argv[2]);
     strcpy(filename, argv[3]);
   }
+  printf("ftpread v1.0\n");
 
   dbgmsg(("parameter: passive? %d\n", passive));
   dbgmsg(("hostname: %s\n", hostname));
@@ -172,6 +173,8 @@ int main(int argc, char **argv) {
   csend(s_out, "TYPE I");
   cexpect(s_in, 200, "Command okay.");
   if(passive ==1) {
+    printf("mode: passive\n\n");
+
     uint32_t h1, h2, h3, h4, p1, p2;
     csend(s_out, "PASV");
     cexpect(s_in, 227, "Entering Passive Mode (h1,h2,h3,h4,p1,p2).");
@@ -200,6 +203,8 @@ int main(int argc, char **argv) {
     shutdown(t_s, SHUT_RDWR);
     close(t_s);
   } else {
+    printf("mode: active\n\n");
+
     uint32_t h1, h2, h3, h4, p1, p2;
 
     int t_s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -229,6 +234,11 @@ int main(int argc, char **argv) {
     }
     dbgmsg(("%s:%d\n", inet_ntoa(t_sin.sin_addr), ntohs(t_sin.sin_port)));
 
+    if(-1 == listen(t_s, 4)) {
+      herror("listen failed");
+      exit(1);
+    }
+
     h1 = t_sin.sin_addr.s_addr & 0xff;
     h2 = (t_sin.sin_addr.s_addr>>8) & 0xff;
     h3 = (t_sin.sin_addr.s_addr>>16) & 0xff;
@@ -237,25 +247,24 @@ int main(int argc, char **argv) {
     p2 = (t_sin.sin_port>>8) & 0xff;
     csend(s_out, "PORT %u,%u,%u,%u,%u,%u", h1, h2, h3, h4, p1, p2);
     cexpect(s_in, 200, "Command okay.");
+    csend(s_out, "RETR hello.txt");
 
-    if(-1 == listen(t_s, 4)) {
-      herror("listen failed");
+    int c_s = accept(t_s, NULL, NULL);
+    if(c_s < 0) {
+      herror("accept failed");
       exit(1);
     }
 
-    while(1) {
-      int c_s = accept(t_s, NULL, NULL);
-      if(c_s < 0) {
-	herror("accept failed");
-	exit(1);
-      }
-
-      printf("accepted\n");
-      // read(c_s, buf, size);
-
-      shutdown(c_s, SHUT_RDWR);
-      close(c_s);
+    char buf[512];
+    int r;
+    while((r=read(c_s, buf, 512)) > 0) {
+      write(1, buf, r);
     }
+
+    shutdown(c_s, SHUT_RDWR);
+    close(c_s);
+
+    close(t_s);
   }
 
   fclose(s_out);

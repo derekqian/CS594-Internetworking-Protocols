@@ -27,7 +27,10 @@ expect.o : expect.c
 	$(CC) $(CFLAGS) expect.c
 
 test :
-	./ftpread -active svcs.cs.pdx.edu hello.txt
+	@echo ==================run in passive mode===============
+	@./ftpread -passive svcs.cs.pdx.edu hello.txt
+	@echo =================run in active mode===============
+	@./ftpread -active svcs.cs.pdx.edu hello.txt
 
 clean:
 	-rm -f ftpread *.o
