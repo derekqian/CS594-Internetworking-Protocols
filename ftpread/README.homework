@@ -1,0 +1,17 @@
+1. General description
+This program implements a FTP client. The program can works in both passive mode and active mode to retrieve a file from the specified FTP server, and display the content of the file on the shell screen.
+
+2. Files submitted
+ftpread.c - the main source file of this program.
+expect.c - the library source file provided by Prof. Massey.
+expect.h - the library header file provided by Prof. Massey.
+Makefile - the makefile to build and test the program.
+
+3. How to build
+To build the program, go to the source directory, type "make".
+
+4. How to run
+Type "make test" will run the program twice in passive mode and active mode respectively.
+
+5. Other stuff learned
+wireshark is really a good tool to capture the data packets and help constructing a solid understanding of the protocol used. We use this tool to get the trace of FTP transaction, and develop our program based on the trace.
